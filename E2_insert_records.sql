@@ -1,7 +1,4 @@
--- WGU D597 Task 1 - E2: Import BOTH source datasets
--- Run this entire file using psql (or pgAdmin Query Tool when server-side COPY has access).
--- Re-running refreshes the catalog and updates patient data without duplicating records.
-
+-- WGU D597 Task 1 
 
 BEGIN;
 
@@ -94,13 +91,7 @@ ON CONFLICT (patient_id) DO UPDATE SET
     allergies = EXCLUDED.allergies;
 
 -- 6. Refresh catalog records from the second dataset.
--- The CSV does not have a reliable unique product identifier; the catalog
--- is refreshed to avoid multiplying rows if this script is run twice.
 TRUNCATE TABLE fitness_tracker_catalog RESTART IDENTITY;
-
--- Prices in the Excel-derived CSV sometimes contain commas (e.g., 1,14,900).
--- Remove commas before converting to NUMERIC.
--- Match on normalized model name only; unmatched products keep NULL tracker_id.
 INSERT INTO fitness_tracker_catalog (
     tracker_id, brand_name, device_type, model_name, color,
     selling_price, original_price, display, rating, strap_material,
@@ -125,27 +116,35 @@ LEFT JOIN tracker_models AS t
 
 COMMIT;
 
--- 7. Verification for WGU screenshot evidence.
-SELECT 'staging_medical_records' AS table_name, COUNT(*) AS row_count FROM staging_medical_records
-UNION ALL SELECT 'staging_fitness_trackers', COUNT(*) FROM staging_fitness_trackers
-UNION ALL SELECT 'patients', COUNT(*) FROM patients
-UNION ALL SELECT 'medical_profiles', COUNT(*) FROM medical_profiles
-UNION ALL SELECT 'tracker_models', COUNT(*) FROM tracker_models
-UNION ALL SELECT 'fitness_tracker_catalog', COUNT(*) FROM fitness_tracker_catalog
-ORDER BY table_name;
 
--- How many product listings have a known match in patient tracker models?
-SELECT COUNT(*) AS catalog_total,
-       COUNT(tracker_id) AS matched_catalog_rows,
-       COUNT(*) - COUNT(tracker_id) AS unmatched_catalog_rows
+----------------------verification queries----------------------
+SELECT
+    p.patient_id,
+    p.name,
+    p.date_of_birth,
+    m.medical_conditions,
+    m.medications,
+    m.allergies,
+    t.tracker_name
+FROM patients p
+JOIN medical_profiles m
+    ON p.patient_id = m.patient_id
+LEFT JOIN tracker_models t
+    ON p.tracker_id = t.tracker_id
+ORDER BY p.patient_id
+LIMIT 20;
+
+
+
+SELECT 'patients' AS table_name, COUNT(*) AS total
+FROM patients
+UNION ALL
+SELECT 'medical_profiles', COUNT(*)
+FROM medical_profiles
+UNION ALL
+SELECT 'tracker_models', COUNT(*)
+FROM tracker_models
+UNION ALL
+SELECT 'fitness_tracker_catalog', COUNT(*)
 FROM fitness_tracker_catalog;
 
--- Optional joined verification across BOTH datasets (no full export).
-SELECT p.patient_id, p.name, m.medical_conditions,
-       t.tracker_name, c.brand_name, c.model_name, c.selling_price
-FROM patients AS p
-JOIN medical_profiles AS m ON m.patient_id = p.patient_id
-LEFT JOIN tracker_models AS t ON t.tracker_id = p.tracker_id
-LEFT JOIN fitness_tracker_catalog AS c ON c.tracker_id = t.tracker_id
-ORDER BY p.patient_id, c.catalog_id
-LIMIT 10;
