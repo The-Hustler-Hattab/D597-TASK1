@@ -57,6 +57,4 @@ CREATE TABLE IF NOT EXISTS fitness_tracker_catalog (
         REFERENCES tracker_models(tracker_id)
 );
 
--- Index for catalog lookups by tracker
-CREATE INDEX IF NOT EXISTS idx_catalog_tracker_id
-ON fitness_tracker_catalog(tracker_id);
+
